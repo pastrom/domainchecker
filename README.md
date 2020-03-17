@@ -6,7 +6,7 @@ Support Python >= 3.6
 
 Framework for automating collection of domain information and status. Outputs results to ElasticSearch.
 
-This project is built on another [SSL Labs Scanner project created by kyhau] (https://github.com/kyhau/ssllabs-scan)
+This project is built on another [SSL Labs Scanner project created by kyhau](https://github.com/kyhau/ssllabs-scan)
 
 Modules and clients implemented:
 
