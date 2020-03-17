@@ -22,7 +22,7 @@ CURRENT_LOCATION = 'Europe/Oslo'
 ##################################
 
 # ElasticSearch settings
-ES_ADDRESS = "192.168.69.19"
+ES_IP_ADDRESS = "localhost"
 ES_PORT = "9200"
 ES_INDEX_PREFIX = "domainchecker"
 
@@ -66,7 +66,7 @@ class DomainChecker():
     
     def __init__(self):
         #Create ElaticSearch-client instance with details set above
-        self.elasticClientInstance = ElasticSearchClient(ES_ADDRESS, ES_PORT, ES_INDEX_PREFIX)
+        self.elasticClientInstance = ElasticSearchClient(ES_IP_ADDRESS, ES_PORT, ES_INDEX_PREFIX)
         self.lookupClientInstance = LookupClient(CURRENT_LOCATION)
         self.sslClientInstance = SSLLabsClient(CURRENT_LOCATION, API_URL, SSL_CHECK_PROGRESS_INTERVAL_SECS, RESULT_PUBLISH, START_NEW_SCAN, SCAN_ALL, IGNORE_MISMATCH)
         
