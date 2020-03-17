@@ -16,7 +16,9 @@ Modules and clients implemented:
 - Checks redirects of http requests on default http/https ports.
 
 2. SSL configuration (based on the free [Qualys SSL Labs API](https://github.com/ssllabs/ssllabs-scan/blob/stable/ssllabs-api-docs.md))
-- Certificates used for SSL.
+- Stores raw results from SSL Labs to ElasticSearch (in JSON structure)
+- Stores a selection of highlights from the SSL Labs results in separate ElasticSearch index
+- Stores information regarding certificates used for SSL in separate
 
 ## Input and Output
 
