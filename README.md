@@ -33,6 +33,6 @@ Output: ElasticSearch node and indexes are configurable in the settings of main 
 virtualenv domaincheckerenv
 source domaincheckerenv/bin/activate
 pip install -e .
-domain-checker domains.txt
+domainchecker domains.txt
 ```
 

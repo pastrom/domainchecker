@@ -2,8 +2,6 @@
 App main
 """
 
-import os
-import shutil
 import sys
 import traceback
 from datetime import datetime
@@ -74,7 +72,7 @@ class DomainChecker():
         
         print('All clients initiated successfully!')
     
-    def process(self, server_list_file, check_progress_interval_secs=30):
+    def process(self, server_list_file):
         
         ret = 0
         # read from input file

@@ -17,7 +17,7 @@ __requirements__ = [
 
 __entry_points__ = {
     "console_scripts": [
-        "domain-checker = domainchecker.main:main",
+        "domainchecker = domainchecker.main:main",
     ]
 }
 
