@@ -115,7 +115,7 @@ class DomainChecker():
                                 # Stores raw reports in separate ElasticSearch-index if enabled in settings
                                 if STORE_RAW_TO_ES:
                                     now = datetime.now()
-                                    rawIndex = STORE_RAW_TO_ES_INDEX_PREFIX + "-" + now.strftime("%Y-%m-%d")
+                                    rawIndex = "ssl-"+STORE_RAW_TO_ES_INDEX_PREFIX + "-" + now.strftime("%Y-%m-%d")
                                     self.elasticClientInstance.index_to_es(rawIndex, sslResult)
                                 
                                 # Stores certificate info in separate ElasticSearch-index if enabled in settings
