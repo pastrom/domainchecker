@@ -9,6 +9,7 @@ from datetime import datetime
 from domainchecker.elasticsearch_client import ElasticSearchClient
 from domainchecker.lookup_client import LookupClient
 from domainchecker.ssllabs_client import SSLLabsClient
+from domainchecker.domain_checker_utils import getHostInfo
 
 ##################################
 ## General settings ##############
@@ -86,6 +87,7 @@ class DomainChecker():
             try:
                 
                 lookupResult = self.lookupClientInstance.analyze(server, URL_TIMEOUT, CURRENT_LOCATION, PORTS)
+                lookupResult.update(getHostInfo())
                 indexDate = datetime.now()
                 index = "lookup-" + indexDate.strftime("%Y-%m-%d")
         
