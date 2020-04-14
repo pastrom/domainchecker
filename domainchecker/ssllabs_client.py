@@ -89,9 +89,6 @@ class SSLLabsClient():
 
     def prepare_ssl_for_es(self, host, data, ep):
         
-        #for ep in data["endpoints"]:
-#        print("her?")
- #       print(ep)
         summary = {}
         summary["analysisTime"] = printLocalTime(self.__current_location)
         summary["host"] = host
@@ -140,7 +137,6 @@ class SSLLabsClient():
 
         #for ep in data["endpoints"]:
         if "cert" in ep["details"]:
-            print("eller her?")
 
             summary = {}
             summary["analysisTime"] = printLocalTime(self.__current_location)

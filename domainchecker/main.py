@@ -114,14 +114,14 @@ class DomainChecker():
                                 
                                 # Stores raw reports in separate ElasticSearch-index if enabled in settings
                                 if STORE_RAW_TO_ES:
-                                    print("Indexer raw")
+
                                     now = datetime.now()
                                     rawIndex = "ssl-"+STORE_RAW_TO_ES_INDEX_PREFIX + "-" + now.strftime("%Y-%m-%d")
                                     self.elasticClientInstance.index_to_es(rawIndex, sslResult)
 
                                 for ep in sslResult["endpoints"]:
                                     if ep["statusMessage"] == "Ready":
-                                        print("indexer ep")
+
                                         # Processes and stores SSL scan results
                                         sslPrepped = self.sslClientInstance.prepare_ssl_for_es(server, sslResult, ep)
                                         sslIndex = "ssl-"+sslPrepped["domain"].replace(".","-")
@@ -129,13 +129,13 @@ class DomainChecker():
                                                                         
                                         # Stores certificate info in separate ElasticSearch-index if enabled in settings
                                         if STORE_CERT_TO_ES:
-                                            print("indexer cert")
+
                                             certPrepped = self.sslClientInstance.prepare_cert_for_es(server, sslResult, ep)
                                             certIndex = STORE_CERT_TO_ES_INDEX_PREFIX + "-" + sslPrepped["domain"].replace(".","-")
                                             self.elasticClientInstance.index_to_es(certIndex, certPrepped)
                                 
                                     else:
-                                        print(ep)
+
                                         summary = {}
                                         summary["analysisTime"] = printLocalTime(CURRENT_LOCATION)
                                         summary["host"] = server
@@ -147,7 +147,7 @@ class DomainChecker():
                                         self.elasticClientInstance.index_to_es(index, summary)
 
                         except Exception as e:
-                            print("jadda2")
+                            
                             print(format(e))
                             #traceback.print_stack(e)
                             ret = 1
