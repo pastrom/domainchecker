@@ -50,7 +50,7 @@ SSL_SCAN_ENABLED = True
 SSL_CHECK_PROGRESS_INTERVAL_SECS = 30
 API_URL = "https://api.ssllabs.com/api/v2/analyze"
 RESULT_PUBLISH = "off"
-START_NEW_SCAN = "off"
+START_NEW_SCAN = "on"
 SCAN_ALL = "done"
 IGNORE_MISMATCH = "on"
 
