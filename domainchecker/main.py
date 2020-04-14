@@ -10,6 +10,8 @@ from domainchecker.elasticsearch_client import ElasticSearchClient
 from domainchecker.lookup_client import LookupClient
 from domainchecker.ssllabs_client import SSLLabsClient
 from domainchecker.domain_checker_utils import getHostInfo
+from domainchecker.domain_checker_utils import printLocalTime
+from domainchecker.domain_checker_utils import getDomain
 
 ##################################
 ## General settings ##############
@@ -25,7 +27,7 @@ CURRENT_LOCATION = 'Europe/Oslo'
 # ElasticSearch settings
 ES_IP_ADDRESS = "localhost"
 ES_PORT = "9200"
-ES_INDEX_PREFIX = "domainchecker"
+ES_INDEX_PREFIX = "endaentest"
 
 ##################################
 ## Endpoint lookup settings ######
@@ -94,7 +96,8 @@ class DomainChecker():
                 self.elasticClientInstance.index_to_es(index, lookupResult)
 
             except Exception as e:
-                traceback.print_stack()
+                print(format(e))
+                #traceback.print_stack(e)
                 ret = 1
             
             # Performing SLL Labs analysis if enabled 
@@ -109,36 +112,44 @@ class DomainChecker():
                             
                             if sslResult["status"]  == "READY":
                                 
-                                # Processes and stores SSL scan results
-                                sslPrepped = self.sslClientInstance.prepare_ssl_for_es(server, sslResult)
-                                sslIndex = "ssl-"+sslPrepped["domain"].replace(".","-")
-                                self.elasticClientInstance.index_to_es(sslIndex, sslPrepped)
-                                
                                 # Stores raw reports in separate ElasticSearch-index if enabled in settings
                                 if STORE_RAW_TO_ES:
+                                    print("Indexer raw")
                                     now = datetime.now()
                                     rawIndex = "ssl-"+STORE_RAW_TO_ES_INDEX_PREFIX + "-" + now.strftime("%Y-%m-%d")
                                     self.elasticClientInstance.index_to_es(rawIndex, sslResult)
+
+                                for ep in sslResult["endpoints"]:
+                                    if ep["statusMessage"] == "Ready":
+                                        print("indexer ep")
+                                        # Processes and stores SSL scan results
+                                        sslPrepped = self.sslClientInstance.prepare_ssl_for_es(server, sslResult, ep)
+                                        sslIndex = "ssl-"+sslPrepped["domain"].replace(".","-")
+                                        self.elasticClientInstance.index_to_es(sslIndex, sslPrepped)
+                                                                        
+                                        # Stores certificate info in separate ElasticSearch-index if enabled in settings
+                                        if STORE_CERT_TO_ES:
+                                            print("indexer cert")
+                                            certPrepped = self.sslClientInstance.prepare_cert_for_es(server, sslResult, ep)
+                                            certIndex = STORE_CERT_TO_ES_INDEX_PREFIX + "-" + sslPrepped["domain"].replace(".","-")
+                                            self.elasticClientInstance.index_to_es(certIndex, certPrepped)
                                 
-                                # Stores certificate info in separate ElasticSearch-index if enabled in settings
-                                if STORE_CERT_TO_ES:
-                                    certPrepped = self.sslClientInstance.prepare_cert_for_es(server, sslResult)
-                                    certIndex = STORE_CERT_TO_ES_INDEX_PREFIX + "-" + sslPrepped["domain"].replace(".","-")
-                                    self.elasticClientInstance.index_to_es(certIndex, certPrepped)
-                                
-                            else:
-                            
-                                summary = {}
-                                summary["analysisTime"] = self.printLocalTime()
-                                summary["host"] = server
-                                summary["domain"] = self.getDomain(server)
-                                if "status" in data: summary["analysisStatus"] = data["status"]
-                                if "statusMessage" in data: summary["statusMessage"] = data["statusMessage"]
-                                index = "ssl-"+sslPrepped["domain"].replace(".","-")
-                                self.elasticClientInstance.index_to_es(index, summary)
+                                    else:
+                                        print(ep)
+                                        summary = {}
+                                        summary["analysisTime"] = printLocalTime(CURRENT_LOCATION)
+                                        summary["host"] = server
+                                        summary["domain"] = getDomain(server)
+                                        if "ipAddress" in ep: summary["ipAddress"] = ep["ipAddress"]
+                                        if "status" in sslResult: summary["analysisStatus"] = sslResult["status"]
+                                        if "statusMessage" in ep: summary["statusMessage"] = ep["statusMessage"]
+                                        index = "ssl-"+getDomain(server).replace(".","-")
+                                        self.elasticClientInstance.index_to_es(index, summary)
 
                         except Exception as e:
-                            traceback.print_stack()
+                            print("jadda2")
+                            print(format(e))
+                            #traceback.print_stack(e)
                             ret = 1
             
         return ret

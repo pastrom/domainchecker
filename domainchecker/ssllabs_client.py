@@ -87,76 +87,80 @@ class SSLLabsClient():
             results = self.request_api(path, payload, self.__check_progress_interval_secs)
         return results
 
-    def prepare_ssl_for_es(self, host, data):
+    def prepare_ssl_for_es(self, host, data, ep):
         
-        for ep in data["endpoints"]:
+        #for ep in data["endpoints"]:
+#        print("her?")
+ #       print(ep)
+        summary = {}
+        summary["analysisTime"] = printLocalTime(self.__current_location)
+        summary["host"] = host
+        summary["domain"] = getDomain(host)
+        if "status" in data: summary["analysisStatus"] = data["status"]
+        if "statusMessage" in ep: summary["endpointAnalysisStatus"] = ep["statusMessage"]
+        if "ipAddress" in ep: summary["ipAddress"] = ep["ipAddress"]
+        if "serverName" in ep: summary["serverName"] = ep["serverName"]
+        if "serverSignature" in ep["details"]: summary["serverSignature"] = ep["details"]["serverSignature"]
+        if "grade" in ep: summary["grade"] = ep["grade"]
+        if "hasWarnings" in ep: summary["hasWarnings"] = ep["hasWarnings"]
+        if "cert" in ep["details"]: summary["certNotAfter"] = prepare_datetime(ep["details"]["cert"]["notAfter"])
+        if "chain" in ep["details"]: summary["chain_issues"] = CHAIN_ISSUES[str(ep["details"]["chain"]["issues"])]
+        if "forwardSecrecy" in ep: summary["forward_secrecy"] = FORWARD_SECRECY[str(ep["details"]["forwardSecrecy"])]
+        if "heartbeat" in ep["details"]: summary["heartbeat"] = ep["details"]["heartbeat"]
+        if "vulnBeast" in ep["details"]: summary["vulnBeast"] = ep["details"]["vulnBeast"]
+        if "drownVulnerable" in ep["details"]: summary["drownVulnerable"] = ep["details"]["drownVulnerable"]
+        if "heartbleed" in ep["details"]: summary["heartbleed"] = ep["details"]["heartbleed"]
+        if "freak" in ep["details"]: summary["freak"] = ep["details"]["freak"]
+        if "openSslCcs" in ep["details"]: summary["openSslCcs"] = False if ep["details"]["openSslCcs"] == 1 else True
+        if "openSSLLuckyMinus20" in ep["details"]: summary["openSSLLuckyMinus20"] = False if ep["details"]["openSSLLuckyMinus20"] == 1 else True
+        if "poodle" in ep["details"]: summary["poodle"] = ep["details"]["poodle"]
+        if "poodleTls" in ep["details"]: summary["poodleTls"] = False if ep["details"]["poodleTls"] == 1 else True
+        if "hstsPolicy" in ep["details"]:
+            if "status" in ep["details"]["hstsPolicy"]:
+                summary["hstsPolicy"] = ep["details"]["hstsPolicy"]["status"]
+            else:
+                summary["hstsPolicy"] = "N/A"
+        
+        for protocol in PROTOCOLS:
+            found = False
+            for p in ep["details"]["protocols"]:
+                if protocol.startswith(f"{p['name']} {p['version']}"):
+                    found = True
+                    break
+            summary[protocol] = [True if found is True else False]
+
+        suitesStr = ""
+        for algo in ep["details"]["suites"]["list"]:
+            suitesStr += algo["name"] + " "
+        summary["suites"] = suitesStr
+        
+        return summary
+
+    def prepare_cert_for_es(self, host, data, ep):
+
+        #for ep in data["endpoints"]:
+        if "cert" in ep["details"]:
+            print("eller her?")
+
             summary = {}
             summary["analysisTime"] = printLocalTime(self.__current_location)
             summary["host"] = host
             summary["domain"] = getDomain(host)
-            if "status" in data: summary["analysisStatus"] = data["status"]
-            if "statusMessage" in ep: summary["endpointAnalysisStatus"] = ep["statusMessage"]
-            if "ipAddress" in ep: summary["ipAddress"] = ep["ipAddress"]
+
             if "serverName" in ep: summary["serverName"] = ep["serverName"]
-            if "serverSignature" in ep["details"]: summary["serverSignature"] = ep["details"]["serverSignature"]
             if "grade" in ep: summary["grade"] = ep["grade"]
             if "hasWarnings" in ep: summary["hasWarnings"] = ep["hasWarnings"]
-            if "cert" in ep["details"]: summary["certNotAfter"] = prepare_datetime(ep["details"]["cert"]["notAfter"])
-            if "chain" in ep["details"]: summary["chain_issues"] = CHAIN_ISSUES[str(ep["details"]["chain"]["issues"])]
-            if "forwardSecrecy" in ep: summary["forward_secrecy"] = FORWARD_SECRECY[str(ep["details"]["forwardSecrecy"])]
-            if "heartbeat" in ep["details"]: summary["heartbeat"] = ep["details"]["heartbeat"]
-            if "vulnBeast" in ep["details"]: summary["vulnBeast"] = ep["details"]["vulnBeast"]
-            if "drownVulnerable" in ep["details"]: summary["drownVulnerable"] = ep["details"]["drownVulnerable"]
-            if "heartbleed" in ep["details"]: summary["heartbleed"] = ep["details"]["heartbleed"]
-            if "freak" in ep["details"]: summary["freak"] = ep["details"]["freak"]
-            if "openSslCcs" in ep["details"]: summary["openSslCcs"] = False if ep["details"]["openSslCcs"] == 1 else True
-            if "openSSLLuckyMinus20" in ep["details"]: summary["openSSLLuckyMinus20"] = False if ep["details"]["openSSLLuckyMinus20"] == 1 else True
-            if "poodle" in ep["details"]: summary["poodle"] = ep["details"]["poodle"]
-            if "poodleTls" in ep["details"]: summary["poodleTls"] = False if ep["details"]["poodleTls"] == 1 else True
-            if "hstsPolicy" in ep["details"]:
-                if "status" in ep["details"]["hstsPolicy"]:
-                    summary["hstsPolicy"] = ep["details"]["hstsPolicy"]["status"]
-                else:
-                    summary["hstsPolicy"] = "N/A"
-            
-            for protocol in PROTOCOLS:
-                found = False
-                for p in ep["details"]["protocols"]:
-                    if protocol.startswith(f"{p['name']} {p['version']}"):
-                        found = True
-                        break
-                summary[protocol] = [True if found is True else False]
-
-            suitesStr = ""
-            for algo in ep["details"]["suites"]["list"]:
-                suitesStr += algo["name"] + " "
-            summary["suites"] = suitesStr
+            if "ipAddress" in ep: summary["ipAddress"] = ep["ipAddress"]
+            if "subject" in ep["details"]["cert"]: summary["subject"] = ep["details"]["cert"]["subject"]
+            if "notBefore" in ep["details"]["cert"]: summary["notBefore"] = prepare_datetime(ep["details"]["cert"]["notBefore"])
+            if "notAfter" in ep["details"]["cert"]: summary["notAfter"] = prepare_datetime(ep["details"]["cert"]["notAfter"])
+            if "issuerSubject" in ep["details"]["cert"]: summary["issuerSubject"] = ep["details"]["cert"]["issuerSubject"]
+            if "issuerLabel" in ep["details"]["cert"]: summary["issuerLabel"] = ep["details"]["cert"]["issuerLabel"]
+            if "sha1Hash" in ep["details"]["cert"]: summary["sha1Hash"] = ep["details"]["cert"]["sha1Hash"]
+            if "pinSha256" in ep["details"]["cert"]: summary["pinSha256"] = ep["details"]["cert"]["pinSha256"]
+            if "sigAlg" in ep["details"]["cert"]: summary["sigAlg"] = ep["details"]["cert"]["sigAlg"]
+            if "commonNames" in ep["details"]["cert"]: summary["commonNames"] = ep["details"]["cert"]["commonNames"]
+            if "altNames" in ep["details"]["cert"]: summary["altNames"] = ep["details"]["cert"]["altNames"]
+            if "issues" in ep["details"]["chain"]: summary["chain_issues"] = CHAIN_ISSUES[str(ep["details"]["chain"]["issues"])]
             
             return summary
-
-    def prepare_cert_for_es(self, host, data):
-
-        for ep in data["endpoints"]:
-            if "cert" in ep["details"]:
-                summary = {}
-                summary["analysisTime"] = printLocalTime(self.__current_location)
-                summary["host"] = host
-                summary["domain"] = getDomain(host)
-
-                if "serverName" in ep: summary["serverName"] = ep["serverName"]
-                if "grade" in ep: summary["grade"] = ep["grade"]
-                if "hasWarnings" in ep: summary["hasWarnings"] = ep["hasWarnings"]
-                if "ipAddress" in ep: summary["ipAddress"] = ep["ipAddress"]
-                if "subject" in ep["details"]["cert"]: summary["subject"] = ep["details"]["cert"]["subject"]
-                if "notBefore" in ep["details"]["cert"]: summary["notBefore"] = prepare_datetime(ep["details"]["cert"]["notBefore"])
-                if "notAfter" in ep["details"]["cert"]: summary["notAfter"] = prepare_datetime(ep["details"]["cert"]["notAfter"])
-                if "issuerSubject" in ep["details"]["cert"]: summary["issuerSubject"] = ep["details"]["cert"]["issuerSubject"]
-                if "issuerLabel" in ep["details"]["cert"]: summary["issuerLabel"] = ep["details"]["cert"]["issuerLabel"]
-                if "sha1Hash" in ep["details"]["cert"]: summary["sha1Hash"] = ep["details"]["cert"]["sha1Hash"]
-                if "pinSha256" in ep["details"]["cert"]: summary["pinSha256"] = ep["details"]["cert"]["pinSha256"]
-                if "sigAlg" in ep["details"]["cert"]: summary["sigAlg"] = ep["details"]["cert"]["sigAlg"]
-                if "commonNames" in ep["details"]["cert"]: summary["commonNames"] = ep["details"]["cert"]["commonNames"]
-                if "altNames" in ep["details"]["cert"]: summary["altNames"] = ep["details"]["cert"]["altNames"]
-                if "issues" in ep["details"]["chain"]: summary["chain_issues"] = CHAIN_ISSUES[str(ep["details"]["chain"]["issues"])]
-                
-                return summary
