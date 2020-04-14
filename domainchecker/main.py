@@ -27,7 +27,7 @@ CURRENT_LOCATION = 'Europe/Oslo'
 # ElasticSearch settings
 ES_IP_ADDRESS = "localhost"
 ES_PORT = "9200"
-ES_INDEX_PREFIX = "endaentest"
+ES_INDEX_PREFIX = "domainchecker"
 
 ##################################
 ## Endpoint lookup settings ######
