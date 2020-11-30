@@ -5,8 +5,10 @@ App main
 import sys
 import traceback
 from datetime import datetime
+import json
 
 from domainchecker.elasticsearch_client import ElasticSearchClient
+from domainchecker.loganalytics_client import LogAnalyticsClient
 from domainchecker.lookup_client import LookupClient
 from domainchecker.ssllabs_client import SSLLabsClient
 from domainchecker.domain_checker_utils import getHostInfo
@@ -25,9 +27,16 @@ CURRENT_LOCATION = 'Europe/Oslo'
 ##################################
 
 # ElasticSearch settings
-ES_IP_ADDRESS = "localhost"
+SAVE_TO_ELASTIC = False
+ES_IP_ADDRESS = "INSERT ES HOST"
 ES_PORT = "9200"
 ES_INDEX_PREFIX = "domainchecker"
+
+# Azure Log Analytics settings
+SAVE_TO_LOGANALYTICS = False
+WORKSPACE_ID = "INSERT WORK SPACE ID"
+WORKSPACE_SHARED_KEY = "INSERT WORKSPACE SHARED KEY"
+#LOG_TYPE = "domainlogs"
 
 ##################################
 ## Endpoint lookup settings ######
@@ -69,10 +78,17 @@ class DomainChecker():
     
     def __init__(self):
         #Create ElaticSearch-client instance with details set above
-        self.elasticClientInstance = ElasticSearchClient(ES_IP_ADDRESS, ES_PORT, ES_INDEX_PREFIX)
         self.lookupClientInstance = LookupClient(CURRENT_LOCATION)
-        self.sslClientInstance = SSLLabsClient(CURRENT_LOCATION, API_URL, SSL_CHECK_PROGRESS_INTERVAL_SECS, RESULT_PUBLISH, START_NEW_SCAN, SCAN_ALL, IGNORE_MISMATCH)
         
+        if SSL_SCAN_ENABLED:
+            self.sslClientInstance = SSLLabsClient(CURRENT_LOCATION, API_URL, SSL_CHECK_PROGRESS_INTERVAL_SECS, RESULT_PUBLISH, START_NEW_SCAN, SCAN_ALL, IGNORE_MISMATCH)
+        
+        if SAVE_TO_ELASTIC:
+            self.elasticClientInstance = ElasticSearchClient(ES_IP_ADDRESS, ES_PORT, ES_INDEX_PREFIX)
+
+        if SAVE_TO_LOGANALYTICS:
+            self.loganalyticsClientInstance = LogAnalyticsClient(WORKSPACE_ID, WORKSPACE_SHARED_KEY)
+
         print('All clients initiated successfully!')
     
     def process(self, server_list_file):
@@ -90,10 +106,14 @@ class DomainChecker():
                 
                 lookupResult = self.lookupClientInstance.analyze(server, URL_TIMEOUT, CURRENT_LOCATION, PORTS)
                 lookupResult.update(getHostInfo())
-                indexDate = datetime.now()
-                index = "lookup-" + indexDate.strftime("%Y-%m-%d")
-        
-                self.elasticClientInstance.index_to_es(index, lookupResult)
+                
+                if SAVE_TO_ELASTIC:
+                    indexDate = datetime.now()
+                    index = "lookup-" + indexDate.strftime("%Y-%m-%d")
+                    self.elasticClientInstance.index_to_es(index, lookupResult)
+                
+                if SAVE_TO_LOGANALYTICS:
+                    self.loganalyticsClientInstance.post_data("domainlookup", lookupResult)
 
             except Exception as e:
                 print(format(e))
@@ -114,25 +134,36 @@ class DomainChecker():
                                 
                                 # Stores raw reports in separate ElasticSearch-index if enabled in settings
                                 if STORE_RAW_TO_ES:
-
-                                    now = datetime.now()
-                                    rawIndex = "ssl-"+STORE_RAW_TO_ES_INDEX_PREFIX + "-" + now.strftime("%Y-%m-%d")
-                                    self.elasticClientInstance.index_to_es(rawIndex, sslResult)
+                                    
+                                    if SAVE_TO_ELASTIC:
+                                        now = datetime.now()
+                                        rawIndex = "ssl-"+STORE_RAW_TO_ES_INDEX_PREFIX + "-" + now.strftime("%Y-%m-%d")
+                                        self.elasticClientInstance.index_to_es(rawIndex, sslResult)
 
                                 for ep in sslResult["endpoints"]:
                                     if ep["statusMessage"] == "Ready":
-
+                                        
                                         # Processes and stores SSL scan results
                                         sslPrepped = self.sslClientInstance.prepare_ssl_for_es(server, sslResult, ep)
-                                        sslIndex = "ssl-"+sslPrepped["domain"].replace(".","-")
-                                        self.elasticClientInstance.index_to_es(sslIndex, sslPrepped)
-                                                                        
+                                        
+                                        if SAVE_TO_ELASTIC:
+                                            sslIndex = "ssl-"+sslPrepped["domain"].replace(".","-")
+                                            self.elasticClientInstance.index_to_es(sslIndex, sslPrepped)
+                                        
+                                        if SAVE_TO_LOGANALYTICS:
+                                            self.loganalyticsClientInstance.post_data("sslresults", sslPrepped)
+                                        
                                         # Stores certificate info in separate ElasticSearch-index if enabled in settings
                                         if STORE_CERT_TO_ES:
-
+                                            
                                             certPrepped = self.sslClientInstance.prepare_cert_for_es(server, sslResult, ep)
-                                            certIndex = STORE_CERT_TO_ES_INDEX_PREFIX + "-" + sslPrepped["domain"].replace(".","-")
-                                            self.elasticClientInstance.index_to_es(certIndex, certPrepped)
+                                            
+                                            if SAVE_TO_ELASTIC:
+                                                certIndex = STORE_CERT_TO_ES_INDEX_PREFIX + "-" + sslPrepped["domain"].replace(".","-")
+                                                self.elasticClientInstance.index_to_es(certIndex, certPrepped)
+                                            
+                                            if SAVE_TO_LOGANALYTICS:
+                                                self.loganalyticsClientInstance.post_data("certs", certPrepped)
                                 
                                     else:
 
@@ -143,8 +174,13 @@ class DomainChecker():
                                         if "ipAddress" in ep: summary["ipAddress"] = ep["ipAddress"]
                                         if "status" in sslResult: summary["analysisStatus"] = sslResult["status"]
                                         if "statusMessage" in ep: summary["statusMessage"] = ep["statusMessage"]
-                                        index = "ssl-"+getDomain(server).replace(".","-")
-                                        self.elasticClientInstance.index_to_es(index, summary)
+                                        
+                                        if SAVE_TO_ELASTIC:
+                                            index = "ssl-"+getDomain(server).replace(".","-")
+                                            self.elasticClientInstance.index_to_es(index, summary)
+                                        
+                                        if SAVE_TO_LOGANALYTICS:
+                                                self.loganalyticsClientInstance.post_data("certs", summary)
 
                         except Exception as e:
                             
@@ -153,24 +189,6 @@ class DomainChecker():
                             ret = 1
             
         return ret
-    
-    @staticmethod
-    def endpointLookup(self, server):
-        result = self.lookupClientInstance.analyze(server, URL_TIMEOUT, CURRENT_LOCATION, PORTS)
-                
-        indexDate = datetime.now()
-        index = "lookup-" + indexDate.strftime("%Y-%m-%d")
-        
-        self.elasticClientInstance.index_to_es(index, result)
-    
-    @staticmethod
-    def sslChecker(self, server):
-        result = self.sslClientInstance.analyze(server, URL_TIMEOUT, CURRENT_LOCATION, PORTS)
-                
-        indexDate = datetime.now()
-        index = "ssl-" + indexDate.strftime("%Y-%m-%d")
-        
-        self.elasticClientInstance.index_to_es(index, result)
 
 def main():
 

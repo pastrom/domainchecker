@@ -101,7 +101,7 @@ class SSLLabsClient():
         if "grade" in ep: summary["grade"] = ep["grade"]
         if "hasWarnings" in ep: summary["hasWarnings"] = ep["hasWarnings"]
         if "cert" in ep["details"]: summary["certNotAfter"] = prepare_datetime(ep["details"]["cert"]["notAfter"])
-        if "chain" in ep["details"]: summary["chain_issues"] = CHAIN_ISSUES[str(ep["details"]["chain"]["issues"])]
+        if "chain" in ep["details"]: summary["cert_chain_issues"] = CHAIN_ISSUES[str(ep["details"]["chain"]["issues"])]
         if "forwardSecrecy" in ep: summary["forward_secrecy"] = FORWARD_SECRECY[str(ep["details"]["forwardSecrecy"])]
         if "heartbeat" in ep["details"]: summary["heartbeat"] = ep["details"]["heartbeat"]
         if "vulnBeast" in ep["details"]: summary["vulnBeast"] = ep["details"]["vulnBeast"]
@@ -124,7 +124,7 @@ class SSLLabsClient():
                 if protocol.startswith(f"{p['name']} {p['version']}"):
                     found = True
                     break
-            summary[protocol] = [True if found is True else False]
+            summary[protocol] = True if found is True else False
 
         suitesStr = ""
         for algo in ep["details"]["suites"]["list"]:
@@ -157,6 +157,6 @@ class SSLLabsClient():
             if "sigAlg" in ep["details"]["cert"]: summary["sigAlg"] = ep["details"]["cert"]["sigAlg"]
             if "commonNames" in ep["details"]["cert"]: summary["commonNames"] = ep["details"]["cert"]["commonNames"]
             if "altNames" in ep["details"]["cert"]: summary["altNames"] = ep["details"]["cert"]["altNames"]
-            if "issues" in ep["details"]["chain"]: summary["chain_issues"] = CHAIN_ISSUES[str(ep["details"]["chain"]["issues"])]
+            if "issues" in ep["details"]["chain"]: summary["cert_chain_issues"] = CHAIN_ISSUES[str(ep["details"]["chain"]["issues"])]
             
             return summary
